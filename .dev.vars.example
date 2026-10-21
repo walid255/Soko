@@ -1,0 +1,2 @@
+DATABASE_URL="mysql://username:password@host/development?sslaccept=strict"
+BOOTSTRAP_ADMIN_TOKEN="replace-with-a-random-secret-at-least-32-characters-long"
