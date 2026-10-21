@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiRequest, setCsrfToken } from "./api.js";
 
 const HUBS = [
@@ -14,6 +14,7 @@ const TRANSLATIONS = {
     tagline: "Ukusanyaji na Usafirishaji wa Bidhaa za Masoko",
     hub: "Kituo:",
     catalog: "Masoko",
+    myProducts: "Bidhaa Zangu",
     pooling: "Ukusanyaji",
     dispatch: "Dereva",
     admin: "Usimamizi (Admin)",
@@ -62,6 +63,7 @@ const TRANSLATIONS = {
     tagline: "Market Goods Group Aggregation & Micro-Logistics",
     hub: "Hub:",
     catalog: "Catalog",
+    myProducts: "My Products",
     pooling: "Group Pool",
     dispatch: "Driver",
     admin: "Admin Portal",
@@ -161,6 +163,7 @@ function App() {
   const [adminTab, setAdminTab] = useState("overview");
   const [adminOrders, setAdminOrders] = useState([]);
   const [adminProducts, setAdminProducts] = useState([]);
+  const [vendorProducts, setVendorProducts] = useState([]);
   const [adminMedia, setAdminMedia] = useState([]);
   const [adminSettings, setAdminSettings] = useState(settings);
   const [adminSaving, setAdminSaving] = useState(false);
@@ -272,6 +275,21 @@ function App() {
   }, [user, view]);
 
   useEffect(() => {
+    if (user?.role !== "vendor" || view !== "vendor-products") return;
+    let cancelled = false;
+    apiRequest("/api/vendor/products")
+      .then((data) => {
+        if (!cancelled) setVendorProducts(data.products);
+      })
+      .catch((error) => {
+        if (!cancelled) notify(error.message, "error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
@@ -323,6 +341,10 @@ function App() {
     }
     if (nextView === "dispatch" && !["driver", "admin"].includes(user?.role)) {
       notify("Eneo hili limetengwa kwa Madereva na Admin pekee.");
+      return;
+    }
+    if (nextView === "vendor-products" && user?.role !== "vendor") {
+      notify("Usimamizi wa bidhaa unapatikana kwa wauzaji pekee.", "error");
       return;
     }
     setView(nextView);
@@ -556,6 +578,42 @@ function App() {
       await refreshAdmin();
       setAdminTab("products");
       notify(isExisting ? "Bidhaa imesasishwa." : "Bidhaa imeongezwa.", "success");
+      return true;
+    } catch (error) {
+      notify(error.message, "error");
+      return false;
+    }
+  };
+
+  const refreshVendorProducts = async () => {
+    const data = await apiRequest("/api/vendor/products");
+    setVendorProducts(data.products);
+  };
+
+  const saveVendorProduct = async (product) => {
+    try {
+      const isExisting = Boolean(product.id);
+      await apiRequest(
+        isExisting
+          ? `/api/vendor/products/${encodeURIComponent(product.id)}`
+          : "/api/vendor/products",
+        { method: isExisting ? "PUT" : "POST", body: product },
+      );
+      await refreshVendorProducts();
+      notify(isExisting ? "Bidhaa imesasishwa." : "Bidhaa imeongezwa.", "success");
+      return true;
+    } catch (error) {
+      notify(error.message, "error");
+      return false;
+    }
+  };
+
+  const archiveVendorProduct = async (productId) => {
+    if (!window.confirm("Una uhakika unataka kuificha bidhaa hii kwenye katalogi?")) return;
+    try {
+      await apiRequest(`/api/vendor/products/${encodeURIComponent(productId)}`, { method: "DELETE" });
+      await refreshVendorProducts();
+      notify("Bidhaa imefichwa kwenye katalogi.", "success");
     } catch (error) {
       notify(error.message, "error");
     }
@@ -642,6 +700,21 @@ function App() {
             addToCart={addToCart}
             navigate={navigate}
           />
+        )}
+        {servicesReady && view === "vendor-products" && user?.role === "vendor" && (
+          <section className="space-y-4">
+            <div>
+              <h1 className="text-2xl font-black text-slate-900">Bidhaa Zangu</h1>
+              <p className="text-sm text-slate-600 mt-1">Ongeza bidhaa zako na udhibiti bei, vituo vinavyopatikana, na mwonekano kwa wateja.</p>
+            </div>
+            <ProductManager
+              products={vendorProducts}
+              saveProduct={saveVendorProduct}
+              archiveProduct={archiveVendorProduct}
+              mediaEndpoint="/api/admin/media"
+              sectionTitle="Katalogi yangu ya bidhaa"
+            />
+          </section>
         )}
         {servicesReady && view === "pooling" && (
           <Pooling
@@ -784,6 +857,7 @@ function App() {
 
 const NAV_ITEMS = [
   ["catalog", "fa-border-all", "catalog"],
+  ["vendor-products", "fa-boxes-stacked", "myProducts"],
   ["pooling", "fa-people-group", "pooling"],
   ["dispatch", "fa-motorcycle", "dispatch"],
   ["admin", "fa-user-shield", "admin"],
@@ -829,7 +903,11 @@ function Header({ user, hub, setHub, language, view, toggleLanguage, t, navigate
         </button>
         {user && (
           <nav className="hidden md:flex gap-1 bg-soko-700/50 p-1 rounded-xl border border-soko-600">
-            {NAV_ITEMS.filter(([id]) => id !== "dispatch" || canSeeDispatch).filter(([id]) => id !== "admin" || canSeeAdmin).map(([id, icon, label]) => (
+            {NAV_ITEMS
+              .filter(([id]) => id !== "vendor-products" || user?.role === "vendor")
+              .filter(([id]) => id !== "dispatch" || canSeeDispatch)
+              .filter(([id]) => id !== "admin" || canSeeAdmin)
+              .map(([id, icon, label]) => (
               <button key={id} onClick={() => navigate(id)} className={`px-3 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${view === id ? "bg-soko-600 text-white" : id === "admin" ? "text-amberCustom-500" : "text-soko-100 hover:text-white"} hover:bg-soko-600/50`}>
                 <Icon name={icon} /><span>{t[label]}</span>
               </button>
@@ -1089,7 +1167,7 @@ const EMPTY_PRODUCT = {
   isActive: true,
 };
 
-function ProductManager({ products, saveProduct, archiveProduct }) {
+function ProductManager({ products, saveProduct, archiveProduct, mediaEndpoint = "/api/admin/media", sectionTitle = "Bidhaa na picha za R2" }) {
   const [editing, setEditing] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState("");
@@ -1102,7 +1180,7 @@ function ProductManager({ products, saveProduct, archiveProduct }) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const result = await apiRequest("/api/admin/media", { method: "POST", body: form });
+      const result = await apiRequest(mediaEndpoint, { method: "POST", body: form });
       update("image", result.url);
     } catch (error) {
       setFormError(error.message);
@@ -1113,13 +1191,13 @@ function ProductManager({ products, saveProduct, archiveProduct }) {
 
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
-      <div className="flex flex-wrap justify-between items-center gap-3"><h2 className="font-bold text-lg">Bidhaa na picha za R2</h2><button onClick={() => { setEditing({ ...EMPTY_PRODUCT }); setFormError(""); }} className="bg-soko-700 text-white px-4 py-2 rounded-xl text-xs font-bold"><Icon name="fa-plus mr-1" />Ongeza bidhaa</button></div>
+      <div className="flex flex-wrap justify-between items-center gap-3"><h2 className="font-bold text-lg">{sectionTitle}</h2><button onClick={() => { setEditing({ ...EMPTY_PRODUCT }); setFormError(""); }} className="bg-soko-700 text-white px-4 py-2 rounded-xl text-xs font-bold"><Icon name="fa-plus mr-1" />Ongeza bidhaa</button></div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products.map((product) => <article key={product.id} className="border border-slate-200 rounded-xl overflow-hidden"><img src={product.image} alt="" className="h-36 w-full object-cover bg-slate-100" /><div className="p-4 space-y-2"><div className="flex justify-between items-start gap-2"><h3 className="font-bold text-sm">{product.swahiliName}</h3><span className={`text-[10px] font-bold ${product.isActive ? "text-emerald-700" : "text-slate-500"}`}>{product.isActive ? "INAONEKANA" : "IMEFICHWA"}</span></div><p className="text-xs text-slate-500">{product.category} · {formatMoney(product.priceTZS)} · {product.weightKg} kg</p><div className="flex gap-2"><button onClick={() => { setEditing({ ...product }); setFormError(""); }} className="px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-bold">Hariri</button>{product.isActive && <button onClick={() => archiveProduct(product.id)} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-bold">Ficha</button>}</div></div></article>)}
       </div>
       {editing && (
         <div className="fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-4" onMouseDown={(event) => event.target === event.currentTarget && setEditing(null)}>
-          <form onSubmit={(event) => { event.preventDefault(); setFormError(""); saveProduct(editing); setEditing(null); }} className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-4">
+          <form onSubmit={async (event) => { event.preventDefault(); setFormError(""); if (await saveProduct(editing)) setEditing(null); }} className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-4">
             <div className="flex justify-between items-center"><h3 className="font-bold text-lg">{editing.id ? "Hariri bidhaa" : "Ongeza bidhaa"}</h3><button type="button" onClick={() => setEditing(null)} aria-label="Funga"><Icon name="fa-xmark" /></button></div>
             <div className="grid sm:grid-cols-2 gap-3">
               <label className="text-xs font-bold">Jina la Kiswahili<input required maxLength={160} value={editing.swahiliName} onChange={(event) => update("swahiliName", event.target.value)} className="mt-1 w-full border rounded-lg p-2" /></label>
@@ -1210,7 +1288,7 @@ function MobileNav({ user, view, t, navigate }) {
   if (!user) return null;
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-soko-800 border-t border-soko-700 z-30 flex justify-around items-center px-2 py-2">
-      {NAV_ITEMS.filter(([id]) => id !== "dispatch" || ["driver", "admin"].includes(user.role)).filter(([id]) => id !== "admin" || user.role === "admin").map(([id, icon, label]) => (
+      {NAV_ITEMS.filter(([id]) => id !== "vendor-products" || user.role === "vendor").filter(([id]) => id !== "dispatch" || ["driver", "admin"].includes(user.role)).filter(([id]) => id !== "admin" || user.role === "admin").map(([id, icon, label]) => (
         <button key={id} onClick={() => navigate(id)} className={`flex flex-col items-center py-1 px-3 rounded-lg ${view === id ? "text-white" : "text-soko-300"}`}><Icon name={`${icon} text-lg`} /><span className="text-[10px] font-bold mt-0.5">{t[label]}</span></button>
       ))}
     </nav>

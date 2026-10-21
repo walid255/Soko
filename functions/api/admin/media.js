@@ -31,7 +31,10 @@ export async function onRequestGet({ request, env }) {
 
 export async function onRequestPost({ request, env }) {
   try {
-    await requireUser(request, env, "admin");
+    const session = await requireUser(request, env);
+    if (!["admin", "vendor"].includes(session.user.role)) {
+      throw new HttpError(403, "Only vendors and admins can upload product images.");
+    }
     const bucket = requireBinding(env.MEDIA_BUCKET, "R2 media bucket");
     const form = await request.formData();
     const file = form.get("file");
