@@ -15,7 +15,7 @@ SokoSafi is a React storefront served by Cloudflare Pages. Its Pages Functions A
 
 ### 1. PlanetScale
 
-Create a PlanetScale MySQL database and branch, then apply `migrations/0001_initial.sql` to the production branch using the PlanetScale SQL console or `pscale shell`. The migration creates the application tables and initial catalog products.
+Create a PlanetScale MySQL database and branch, then apply `migrations/0001_initial.sql` followed by `migrations/0002_vendor_product_ownership.sql` to the production branch using the PlanetScale SQL console or `pscale shell`. For an existing installation that already applied `0001`, apply only `0002` before deploying this version; it adds vendor ownership to products.
 
 Create a PlanetScale database password with the least access needed by the application. Save its connection URL as the Pages secret `DATABASE_URL`; do not commit it or place it in a `VITE_` variable.
 
@@ -65,15 +65,15 @@ Bootstrap is one-time: a database lock prevents subsequent attempts. Remove `BOO
 
 ## Admin dashboard
 
-Sign in with the initial admin account. The admin portal manages:
+Sign in with the initial admin account. The admin portal manages user approvals and roles, marketplace-wide settings, orders and manual payment confirmation, and product catalog entries that are not owned by a vendor. Admins can also remove unused R2 images.
 
-- Product catalog entries, hub availability, and visibility.
-- Product image uploads and unused R2 image removal.
-- Order review, cancellation, and manual payment confirmation.
-- User approval, suspension, roles, and deletion (accounts with order history cannot be deleted).
-- Marketplace settings stored in KV: delivery fee, group discount, target weight, cutoff hour, and default hub.
+Vendors manage their own product catalog from **Bidhaa Zangu / My Products**. They can add and edit product details, upload product images to R2, choose hub availability, and show or hide their own products. The API checks product ownership on every edit and archive request. Product records from the initial seed remain marketplace-wide records for the admin to manage.
 
 The dashboard intentionally does not provision or modify Cloudflare accounts, Pages projects, namespaces, buckets, or PlanetScale infrastructure. Manage those through their provider dashboards and deployment configuration.
+
+## Blank page after deployment
+
+If the app does not start, the page now shows a diagnostic message rather than an empty root. In Cloudflare Pages, check that the deployment uses build command `npm run build` and output directory `dist`, then redeploy the latest commit. Check the deployment build log and browser developer tools' **Console** and **Network** tabs for failed JavaScript/CSS assets or Pages Function errors. Missing PlanetScale/KV/R2 bindings should show an in-app backend configuration error; they should not prevent the React shell from rendering.
 
 ## Payments and operational limits
 
