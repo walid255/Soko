@@ -21,7 +21,7 @@ Create a PlanetScale database password with the least access needed by the appli
 
 ### 2. Cloudflare storage
 
-Create two Workers KV namespaces and one R2 bucket (for example, `sokosafi-media`). In the Pages project, bind them with these exact names:
+The binding definitions for this project are in `wrangler.toml`, which is the source of truth used by Wrangler for local Pages development and deployment. It references the existing `SESSION_KV` and `APP_KV` namespaces and the `mediabucket` R2 bucket:
 
 | Service | Pages binding |
 | --- | --- |
@@ -29,11 +29,11 @@ Create two Workers KV namespaces and one R2 bucket (for example, `sokosafi-media
 | Workers KV for settings and rate limits | `APP_KV` |
 | R2 bucket for product images | `MEDIA_BUCKET` |
 
-Configure bindings separately for Production and Preview. Use separate databases and storage namespaces for Preview so preview deployments cannot change production data.
+If these Cloudflare resources are renamed or replaced, update their IDs/names in `wrangler.toml`. Production and preview deployments currently use these same configured storage resources; use separate resources for preview before testing writes against live data.
 
 ### 3. Pages project and secrets
 
-Create a Cloudflare Pages project from this repository, with build command `npm run build` and output directory `dist`. The repository's `wrangler.jsonc` configures the Pages output directory and Workers compatibility.
+Create a Cloudflare Pages project from this repository, with build command `npm run build` and output directory `dist`. `wrangler.toml` configures the Pages output directory, Workers compatibility, KV namespaces, and R2 bucket.
 
 In **Pages → Settings → Variables and Secrets**, add:
 
@@ -42,7 +42,7 @@ In **Pages → Settings → Variables and Secrets**, add:
 | `DATABASE_URL` | Secret | PlanetScale connection URL |
 | `BOOTSTRAP_ADMIN_TOKEN` | Secret | One-time initial administrator creation |
 
-The KV and R2 bindings above must also be present in both environments. After configuring the project, deploy with the Pages Git integration or `npm run deploy`.
+Keep secrets out of `wrangler.toml`. Configure them in the Pages project or upload them with Wrangler, for example `npx wrangler pages secret put DATABASE_URL --project-name=sokosafi` and `npx wrangler pages secret put BOOTSTRAP_ADMIN_TOKEN --project-name=sokosafi`. After configuring secrets, deploy with the Pages Git integration or `npm run deploy`.
 
 ### 4. Create the first administrator
 
