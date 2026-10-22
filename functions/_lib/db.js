@@ -11,6 +11,7 @@ export async function execute(env, query, params = []) {
     const db = getDatabase(env);
     return await db.execute(query, params);
   } catch (error) {
+    if (error instanceof HttpError) throw error;
     console.error("PlanetScale query failed", error);
     if (String(error.message).includes("Duplicate entry")) {
       throw new HttpError(409, "A record with this value already exists.");
