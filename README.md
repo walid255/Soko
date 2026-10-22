@@ -42,7 +42,7 @@ In **Pages → Settings → Variables and Secrets**, add:
 | `DATABASE_URL` | Secret | PlanetScale connection URL |
 | `BOOTSTRAP_ADMIN_TOKEN` | Secret | One-time initial administrator creation |
 
-Keep secrets out of `wrangler.toml`. Configure them in the Pages project or upload them with Wrangler, for example `npx wrangler pages secret put DATABASE_URL --project-name=sokosafi` and `npx wrangler pages secret put BOOTSTRAP_ADMIN_TOKEN --project-name=sokosafi`. After configuring secrets, deploy with the Pages Git integration or `npm run deploy`.
+Keep secrets out of `wrangler.toml`. The production Pages environment must have `DATABASE_URL` and, until admin bootstrap is complete, `BOOTSTRAP_ADMIN_TOKEN`. Set each securely using `npx wrangler pages secret put DATABASE_URL --project-name=sokosafi` and `npx wrangler pages secret put BOOTSTRAP_ADMIN_TOKEN --project-name=sokosafi`; Wrangler prompts for the value without storing it in the repository. Confirm secret names with `npx wrangler pages secret list --project-name=sokosafi`. If the list is empty, the database API returns 503 until `DATABASE_URL` is set. After configuring secrets, redeploy with the Pages Git integration or `npm run deploy`.
 
 ### 4. Create the first administrator
 
