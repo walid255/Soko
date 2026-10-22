@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run build && wrangler pages dev dist --kv SESSION_KV --kv APP_KV --r2 MEDIA_BUCKET",
+    "dev": "npm run build && wrangler pages dev dist",
     "build": "vite build",
-    "preview": "npm run build && wrangler pages dev dist --kv SESSION_KV --kv APP_KV --r2 MEDIA_BUCKET",
+    "preview": "npm run build && wrangler pages dev dist",
     "deploy": "npm run build && wrangler pages deploy dist --project-name=sokosafi"
   },
   "dependencies": {

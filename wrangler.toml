@@ -1,0 +1,16 @@
+name = "sokosafi"
+compatibility_date = "2026-10-21"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "./dist"
+
+[[kv_namespaces]]
+binding = "SESSION_KV"
+id = "82acb031062749989b85ca2180f8916c"
+
+[[kv_namespaces]]
+binding = "APP_KV"
+id = "f476d450038b427d9eb64c1cbe24663d"
+
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "mediabucket"
